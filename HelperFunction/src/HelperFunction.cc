@@ -16,9 +16,16 @@
 
 // user include files
 #include "KinZfitter/HelperFunction/interface/HelperFunction.h"
+#include <DataFormats/PatCandidates/interface/Jet.h>
+#include <CondFormats/JetMETObjects/interface/JetCorrectionUncertainty.h>
+#include <CondFormats/JetMETObjects/interface/JetCorrectorParameters.h>
+#include <JetMETCorrections/Objects/interface/JetCorrectionsRecord.h>
+#include <JetMETCorrections/Modules/interface/JetResolution.h>
 
 // fileinPath
 #include "FWCore/ParameterSet/interface/FileInPath.h"
+#include "FWCore/ParameterSet/interface/ConfigurationDescriptions.h"
+#include "FWCore/ParameterSet/interface/ParameterSetDescription.h"
 
 //
 // constants, enums and typedefs
@@ -215,6 +222,39 @@ double HelperFunction::masserror( std::vector<TLorentzVector> Lep, std::vector<d
 
         return sqrt(masserr);
 }
+
+
+//double HelperFunction::relpterrJER(JME::JetResolution resolution_pt,float pt,float eta, float Rho){
+double HelperFunction::relpterrJER(JME::JetResolution resolution_pt,double pt,double eta, double Rho){
+/*
+         JME::JetResolution resolution_pt = JME::JetResolution::get(iSetup, "AK4PFchs_pt");
+ */
+        JME::JetParameters parameters;
+        parameters.setJetPt(pt);
+        parameters.setJetEta(eta);
+        parameters.setRho(Rho);
+
+        return  double(resolution_pt.getResolution(parameters));
+
+}
+double HelperFunction::phierrJER(JME::JetResolution resolution_phi,double pt,double eta, double Rho){
+/*
+ JME::JetResolution resolution_phi = JME::JetResolution::get(iSetup, "AK4PFchs_phi");
+*/
+JME::JetParameters parameters;
+        parameters.setJetPt(pt);
+        parameters.setJetEta(eta);
+        parameters.setRho(Rho);
+
+        return double(resolution_phi.getResolution(parameters));
+
+}
+
+
+
+
+
+
 
 
 double HelperFunction::pterr( reco::Candidate *c, bool isData){

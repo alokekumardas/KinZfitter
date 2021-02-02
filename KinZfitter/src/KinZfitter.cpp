@@ -185,6 +185,40 @@ void KinZfitter::initZs(std::vector< reco::Candidate* > selectedLeptons, std::ma
   
 }
 
+
+void KinZfitter::Setup2L2Q(std::vector<TLorentzVector> selectedFsrLeptons,std::vector<TLorentzVector> Zhad, JME::JetResolution resolution_pt, JME::JetResolution resolution_phi, double rho){
+
+     idsZ1_.clear();
+     p4sZ1_.clear(); p4sZhad_.clear();
+     p4sZ1REFIT_.clear(); p4sZhadREFIT_.clear();
+     pTerrsZ1_.clear(); pTerrsZhad_.clear();
+
+     p4sZ1_.push_back(selectedFsrLeptons[0]); p4sZ1_.push_back(selectedFsrLeptons[1]);
+     p4sZ1REFIT_.push_back(selectedFsrLeptons[0]); p4sZ1REFIT_.push_back(selectedFsrLeptons[1]);
+
+     //initZs(selectedLeptons, selectedFsrPhotons);
+     initZhad(Zhad, resolution_pt, resolution_phi, rho);
+     
+}
+
+void KinZfitter::initZhad(std::vector<TLorentzVector> Zhad, JME::JetResolution resolution_pt, JME::JetResolution resolution_phi, double rho){
+
+     p4sZhad_.clear(); p4sZhad_.push_back(Zhad[0]);
+                       p4sZhad_.push_back(Zhad[1]);
+
+     double pterr1 = Zhad[0].Pt()*helperFunc_->relpterrJER(resolution_pt,Zhad[0].Pt(),Zhad[0].Eta(),rho);
+     double pterr2 = Zhad[1].Pt()*helperFunc_->relpterrJER(resolution_pt,Zhad[1].Pt(),Zhad[1].Eta(),rho);
+
+     if(debug_)cout<<"leading jet rel pT err "<<pterr1<<"/"<<Zhad[0].Pt()<<"="<<pterr1/Zhad[0].Pt()<<endl;
+     if(debug_)cout<<"subleading jet rel pT err "<<pterr2<<"/"<<Zhad[1].Pt()<<"="<<pterr2/Zhad[1].Pt()<<endl;
+
+     pTerrsZhad_.clear(); pTerrsZhad_.push_back(pterr1);
+                          pTerrsZhad_.push_back(pterr2);
+
+}
+
+
+
 void KinZfitter::SetZResult(double l1, double l2, double lph1, double lph2, 
                             double l3, double l4, double lph3, double lph4)
 {
@@ -224,7 +258,8 @@ void KinZfitter::SetZResult(double l1, double l2, double lph1, double lph2,
         TLorentzVector Z1phTrue(0,0,0,0);
   
         double l = 1.0;
-        if(ifsr1==0) l = lZ1_ph1_; if(ifsr1==1) l = lZ1_ph2_;
+        if(ifsr1==0) l = lZ1_ph1_; 
+        if(ifsr1==1) l = lZ1_ph2_;
   
         Z1phTrue.SetPtEtaPhiM(l*Z1ph.Pt(),Z1ph.Eta(),Z1ph.Phi(),Z1ph.M());
   
@@ -243,7 +278,8 @@ void KinZfitter::SetZResult(double l1, double l2, double lph1, double lph2,
         TLorentzVector Z2phTrue(0,0,0,0);
 
         double l = 1.0;
-        if(ifsr2==0) l = lZ2_ph1_; if(ifsr2==1) l = lZ2_ph2_;
+        if(ifsr2==0) l = lZ2_ph1_; 
+        if(ifsr2==1) l = lZ2_ph2_;
 
         Z2phTrue.SetPtEtaPhiM(l*Z2ph.Pt(),Z2ph.Eta(),Z2ph.Phi(),Z2ph.M());
 
@@ -267,6 +303,198 @@ double KinZfitter::GetM4l()
     return pH.M();
 
 }
+
+void KinZfitter::KinRefitZlepZhad()
+{
+
+//double l1,l2,lph1,lph2;
+//l1 = 1.0; l2 = 1.0; lph1 = 1.0; lph2 = 1.0;
+//PerZ1Likelihood(l1,l2,lph1,lph2);
+//f(debug_) cout<<"l1 "<<l1<<"; l2 "<<l2<<" lph1 "<<lph1<<" lph2 "<<lph2<<endl;
+//SetZ1Result(l1,l2,lph1,lph2);
+//if(debug_) cout<<"Zlep refit done"<<endl;
+ double j1, j2, dphij1, dphij2;
+  j1 = 1.0; j2 = 1.0; dphij1 = 0.0; dphij2 = 0.0;
+  PerZhadLikelihood(j1,j2, dphij1,dphij2);
+  if(debug_) cout<<"j1 "<<j1<<"; j2 "<<j2<<" dphij1 "<<dphij1<<" dphij2 "<<dphij2<<endl;
+  SetZhadResult(j1,j2,dphij1,dphij2);
+  if(debug_) cout<<"Zhad refit done"<<endl;
+
+
+}
+
+
+
+int KinZfitter::PerZhadLikelihood(double & j1, double & j2, double & dphij1, double & dphij2){
+
+    j1= 1.0; j2 = 1.0;
+    dphij1 = 0.0; dphij2 = 0.0;
+
+    TLorentzVector Zhad_1 = p4sZhad_[0]; TLorentzVector Zhad_2 = p4sZhad_[1];
+
+    double RECOpT1 = Zhad_1.Pt(); double RECOpT2 = Zhad_2.Pt();
+    double pTerrZhad_1 = pTerrsZhad_[0]; double pTerrZhad_2 = pTerrsZhad_[1];
+
+    RooRealVar* pT1RECO = new RooRealVar("pT1RECO","pT1RECO", RECOpT1, 30, 500);
+    RooRealVar* pT2RECO = new RooRealVar("pT2RECO","pT2RECO", RECOpT2, 30, 500);
+
+    double RECOpT1min = max(30.0, RECOpT1-5*pTerrZhad_1);
+    double RECOpT2min = max(30.0, RECOpT2-5*pTerrZhad_2);
+
+    RooRealVar* pT1 = new RooRealVar("pT1", "pT1", RECOpT1, RECOpT1min, RECOpT1+5*pTerrZhad_1 );
+    RooRealVar* pT2 = new RooRealVar("pT2", "pT2", RECOpT2, RECOpT2min, RECOpT2+5*pTerrZhad_2 );
+
+    double Vtheta1, Vphi1, Vtheta2, Vphi2;
+    Vtheta1 = (Zhad_1).Theta(); Vtheta2 = (Zhad_2).Theta();
+    Vphi1 = (Zhad_1).Phi(); Vphi2 = (Zhad_2).Phi();
+
+/* RooRealVar* theta1 = new RooRealVar("theta1","theta1",Vtheta1);
+    RooRealVar* phi1   = new RooRealVar("phi1","phi1",Vphi1);
+    RooRealVar* theta2 = new RooRealVar("theta2","theta2",Vtheta2);
+    RooRealVar* phi2   = new RooRealVar("phi2","phi2",Vphi2);
+
+    RooRealVar* m1 = new RooRealVar("m1","m1", Zhad_1.M());
+    RooRealVar* m2 = new RooRealVar("m2","m2", Zhad_2.M());
+    if(debug_) cout<<"m1 "<<m1->getVal()<<" m2 "<<m2->getVal()<<endl;
+
+*/
+
+
+ TString m1_sq = ""; m1_sq+=Zhad_1.M()*Zhad_1.M();
+    TString m2_sq = ""; m2_sq+=Zhad_2.M()*Zhad_2.M();
+
+    TString sinTheta1_TString = ""; sinTheta1_TString+=TMath::Sin(Vtheta1);
+    TString sinTheta2_TString = ""; sinTheta2_TString+=TMath::Sin(Vtheta2);
+    TString cosTheta1_TString = ""; cosTheta1_TString+=TMath::Cos(Vtheta1);
+    TString cosTheta2_TString = ""; cosTheta2_TString+=TMath::Cos(Vtheta2);
+    TString cosPhi12_TString = ""; cosPhi12_TString+=TMath::Cos(Vphi1-Vphi2);
+
+    RooFormulaVar E1("E1","TMath::Sqrt((@0*@0)/("+sinTheta1_TString+"*"+sinTheta1_TString+")+"+m1_sq+")",
+                          RooArgList(*pT1));
+    RooFormulaVar E2("E2","TMath::Sqrt((@0*@0)/("+sinTheta2_TString+"*"+sinTheta2_TString+")+"+m2_sq+")",
+                          RooArgList(*pT2));
+    if(debug_) cout<<"E1 "<<E1.getVal()<<"; E2 "<<E2.getVal()<<endl;
+
+    RooFormulaVar* p1v3D2 = new RooFormulaVar("p1v3D2",
+         "@0*@1*( ("+cosTheta1_TString+"*"+cosTheta2_TString+")/("+sinTheta1_TString+"*"+sinTheta2_TString+")+"+cosPhi12_TString+")",
+         RooArgList(*pT1,*pT2));
+    if(debug_) cout<<"p1 DOT p2 is "<<p1v3D2->getVal()<<endl;
+
+    RooFormulaVar p1D2("p1D2","@0*@1-@2",RooArgList(E1,E2,*p1v3D2));
+
+    RooFormulaVar* mZ1;
+    TString mTString=""; mTString+=(Zhad_1.M()*Zhad_1.M()+Zhad_2.M()*Zhad_2.M());
+    mZ1 = new RooFormulaVar("mZ1","TMath::Sqrt(2*@0+"+mTString+")",RooArgList(p1D2));
+
+    if(debug_) cout<<"mZ1 is "<<mZ1->getVal()<<endl;
+
+    RooRealVar sigmaZhad_1("sigmaZhad_1", "sigmaZhad_1", pTerrZhad_1);
+    RooRealVar sigmaZhad_2("sigmaZhad_2", "sigmaZhad_2", pTerrZhad_2);
+
+    RooGaussian gauss1("gauss1","gaussian PDF", *pT1RECO, *pT1, sigmaZhad_1);
+    RooGaussian gauss2("gauss2","gaussian PDF", *pT2RECO, *pT2, sigmaZhad_2);
+
+    RooRealVar bwMean("bwMean", "m_{Z^{0}}", 91.187);
+    RooRealVar bwGamma("bwGamma", "#Gamma", 2.5/2);
+
+// PDF
+//     //RooGenericPdf RelBW("RelBW","1/( pow(mZ1*mZ1-bwMean*bwMean,2)+pow(mZ1,4)*pow(bwGamma/bwMean,2) )", RooArgSet(*mZ1,bwMean,bwGamma) );
+
+    RooGaussian  RelBW("RelBW","RelBW", *mZ1, bwMean, bwGamma);
+
+    RooProdPdf *PDFRelBWxResol;
+    PDFRelBWxResol = new RooProdPdf("PDFRelBWxResol","PDFRelBWxResol",
+                                     RooArgList(gauss1, gauss2, RelBW) );
+
+    RooArgSet *rastmp = new RooArgSet(*pT1RECO,*pT2RECO);
+
+    RooDataSet* pTs = new RooDataSet("pTs","pTs", *rastmp);
+    pTs->add(*rastmp);
+    RooFitResult* r = PDFRelBWxResol->fitTo(*pTs,RooFit::Save(),RooFit::PrintLevel(-1));
+
+    j1 = pT1->getVal()/RECOpT1; j2 = pT2->getVal()/RECOpT2;
+
+    delete p1v3D2;
+    delete r;
+    delete mZ1;
+    delete pT1; delete pT2;
+    delete pT1RECO; delete pT2RECO;
+    delete pTs;
+    delete rastmp;
+    delete PDFRelBWxResol;
+
+    if(debug_) cout<<"end Zhad refit"<<endl;
+
+    return 0;
+
+}
+
+
+
+
+
+
+vector<TLorentzVector> KinZfitter::GetRefitP4s2L2Q()
+{
+
+  TLorentzVector Zlep_1 = p4sZ1REFIT_[0]; TLorentzVector Zlep_2 = p4sZ1REFIT_[1];
+  TLorentzVector Zhad_1 = p4sZhadREFIT_[0]; TLorentzVector Zhad_2 = p4sZhadREFIT_[1];
+
+  vector<TLorentzVector> p4s;
+  p4s.push_back(Zlep_1); p4s.push_back(Zlep_2);
+  p4s.push_back(Zhad_1); p4s.push_back(Zhad_2);
+
+  return p4s;
+
+}
+
+double KinZfitter::GetRefitMZhad(){
+
+  TLorentzVector Zhad_1 = p4sZhadREFIT_[0]; TLorentzVector Zhad_2 = p4sZhadREFIT_[1];
+  return (Zhad_1+Zhad_2).M();
+
+}
+
+
+double KinZfitter::GetRefitMZZ2L2Q(){
+
+  vector<TLorentzVector> p4s = GetRefitP4s2L2Q();
+
+  TLorentzVector pH(0,0,0,0);
+  for(unsigned int i = 0; i< p4s.size(); i++){
+     pH = pH + p4s[i];
+  }
+
+  return pH.M();
+
+}
+
+void KinZfitter::SetZhadResult(double j1, double j2, double dphij1, double dphij2)
+{
+
+  if(debug_) cout<<"start set Zhad result"<<endl;
+
+  // pT scale after refitting w.r.t. reco pT
+  j1_ = j1; j2_ = j2;
+
+  if(debug_) cout<<"Results: j1 "<<j1<<" j2 "<<j2<<endl;
+  dphij1_ = dphij1; dphij2_ = dphij2;
+
+  TLorentzVector Zhad_1 = p4sZhad_[0]; TLorentzVector Zhad_2 = p4sZhad_[1];
+
+  TLorentzVector Zhad_1_True(0,0,0,0);
+  Zhad_1_True.SetPtEtaPhiM(j1_*Zhad_1.Pt(),Zhad_1.Eta(),Zhad_1.Phi(),Zhad_1.M());
+
+  TLorentzVector Zhad_2_True(0,0,0,0);
+  Zhad_2_True.SetPtEtaPhiM(j2_*Zhad_2.Pt(),Zhad_2.Eta(),Zhad_2.Phi(),Zhad_2.M());
+
+  p4sZhadREFIT_.push_back(Zhad_1_True); p4sZhadREFIT_.push_back(Zhad_2_True);
+
+  if(debug_) cout<<"end set Zhad result"<<endl;
+
+}
+
+
 
 
 double KinZfitter::GetRefitM4l()

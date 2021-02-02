@@ -40,7 +40,7 @@
 #include "RooFFTConvPdf.h"
 #include "RooWorkspace.h"
 #include "RooFitResult.h"
-
+#include "JetMETCorrections/Modules/interface/JetResolution.h"
 // fit result covariance matrix
 #include <TMatrixDSym.h>
 
@@ -102,6 +102,27 @@ public:
 
         std::vector<TLorentzVector> GetRefitP4s();
         std::vector<TLorentzVector> GetP4s();
+
+	void Setup2L2Q(std::vector<TLorentzVector> selectedFsrLeptons,std::vector<TLorentzVector> Zhad, JME::JetResolution resolution_pt, JME::JetResolution resolution_phi, double rho);
+	///
+	void KinRefitZlepZhad();
+
+        int  PerZlepLikelihood(double & l1, double & l2, double & lph1, double & lph2);
+        int  PerZhadLikelihood(double & j1, double & j2, double & dphij1, double & dphij2);
+        void SetZlepResult(double l1, double l2, double lph1, double lph2);
+        void SetZhadResult(double j1, double j2, double dphij1, double dphij2);
+
+
+	// result wrappers
+	std::vector<TLorentzVector> GetRefitP4s2L2Q();
+        double GetRefitMZZ2L2Q();
+        double GetMZZ();
+        double GetMZlep();
+        double GetRefitMZlep();
+        double GetMZhad();
+        double GetRefitMZhad();
+
+
 
         ////////////////
 
@@ -196,6 +217,13 @@ private:
         // True mZ1 shape parameters
         double sgVal_, aVal_, nVal_, fVal_, meanVal_, sigmaVal_, f1Val_;
         double meanCB_, sigmaCB_, alphaCB_, nCB_, meanGauss1_, sigmaGauss1_, f1_, meanGauss2_, sigmaGauss2_, f2_, meanGauss3_, sigmaGauss3_, f3_;
+
+  	// ZZ2L2Q
+        void initZhad(std::vector<TLorentzVector> Zhad, JME::JetResolution resolution_pt, JME::JetResolution resolution_phi, double rho);
+        std::vector<TLorentzVector> p4sZhad_, p4sZhadREFIT_;
+        std::vector<double> pTerrsZhad_, phierrsZhad_;
+        double j1_, j2_, dphij1_, dphij2_;
+
 
 };
 

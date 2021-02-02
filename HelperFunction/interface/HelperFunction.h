@@ -81,6 +81,13 @@ namespace edm { class EventSetup; }
 #include <TMatrixDSym.h>
 #include <boost/shared_ptr.hpp>
 
+#include <DataFormats/PatCandidates/interface/Jet.h>
+#include <CondFormats/JetMETObjects/interface/JetCorrectionUncertainty.h>
+#include <CondFormats/JetMETObjects/interface/JetCorrectorParameters.h>
+#include <JetMETCorrections/Objects/interface/JetCorrectionsRecord.h>
+#include <JetMETCorrections/Modules/interface/JetResolution.h>
+#include "PhysicsTools/PatAlgos/plugins/JetCorrFactorsProducer.h"
+#include "DataFormats/JetReco/interface/JPTJet.h"
 using namespace std;
 
 
@@ -92,7 +99,10 @@ class HelperFunction
       virtual ~HelperFunction();
 
       void setdebug(int d){debug_= d;};
-
+      //for jet
+      double relpterrJER(JME::JetResolution resolution_pt,double pt,double eta, double Rho);
+      //double relpterrJER(JME::JetResolution resolution_pt,float pt,float eta, float Rho);
+      double phierrJER(JME::JetResolution resolution_phi,double pt,double eta, double Rho);
       //ForZ
       double pterr(reco::Candidate *c, bool isData);
 
