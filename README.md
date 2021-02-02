@@ -12,7 +12,8 @@ To include the refit in your analyzer:
 
   cd $CMSSW_BASE/src
   
-  git clone https://github.com/mhl0116/KinZfitter.git
+  //git clone https://github.com/mhl0116/KinZfitter.git
+  git clone https://github.com/alokekumardas/KinZfitter.git (for 2l2q)
    
   cd ../
   
